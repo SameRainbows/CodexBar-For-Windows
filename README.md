@@ -46,6 +46,27 @@ The app starts with **no visible window** — look for the 🎚️ icon in your 
 - **Left-click** the tray icon → usage popup
 - **Right-click** → context menu (Refresh, Settings, Exit)
 
+### Easier Start / Close (Windows)
+
+Use the helper scripts from the repo root:
+
+```bat
+start-codexbar.cmd
+close-codexbar.cmd
+```
+
+You can also control an existing instance directly:
+
+```bat
+src\CodexBar.App\bin\Debug\net8.0-windows\CodexBar.App.exe --show
+src\CodexBar.App\bin\Debug\net8.0-windows\CodexBar.App.exe --exit
+```
+
+Behavior:
+- Launching again does **not** create duplicates (single-instance mode).
+- `--show` opens the popup on the running instance.
+- `--exit` cleanly shuts down the running instance.
+
 ## Architecture
 
 ```
