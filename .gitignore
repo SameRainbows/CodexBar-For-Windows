@@ -425,6 +425,11 @@ test-results/
 # Mac bundle stuff
 *.dmg
 *.app
+!src/CodexBar.App/
+!src/CodexBar.App/**
+src/CodexBar.App/bin/
+src/CodexBar.App/obj/
+src/CodexBar.App/*_wpftmp.csproj
 
 # content below from: https://github.com/github/gitignore/blob/master/Global/macOS.gitignore
 # General
