@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Collections;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Media;
@@ -255,112 +254,6 @@ public sealed class EmptyStringToVisibilityConverter : IValueConverter
         return string.IsNullOrWhiteSpace(value as string)
             ? Visibility.Collapsed
             : Visibility.Visible;
-    }
-
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-    {
-        throw new NotSupportedException();
-    }
-}
-
-/// <summary>
-/// Converts collection values with at least one item to Visibility.Visible.
-/// </summary>
-public sealed class CollectionHasItemsToVisibilityConverter : IValueConverter
-{
-    public static readonly CollectionHasItemsToVisibilityConverter Instance = new();
-
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-    {
-        if (value is IEnumerable enumerable)
-        {
-            foreach (var _ in enumerable)
-                return Visibility.Visible;
-        }
-
-        return Visibility.Collapsed;
-    }
-
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-    {
-        throw new NotSupportedException();
-    }
-}
-
-/// <summary>
-/// Converts null/empty collections to Visibility.Visible.
-/// </summary>
-public sealed class CollectionEmptyToVisibilityConverter : IValueConverter
-{
-    public static readonly CollectionEmptyToVisibilityConverter Instance = new();
-
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-    {
-        if (value is IEnumerable enumerable)
-        {
-            foreach (var _ in enumerable)
-                return Visibility.Collapsed;
-        }
-
-        return Visibility.Visible;
-    }
-
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-    {
-        throw new NotSupportedException();
-    }
-}
-
-/// <summary>
-/// Converts reset timestamp to human-readable UI text.
-/// </summary>
-public sealed class ModelQuotaResetTextConverter : IValueConverter
-{
-    public static readonly ModelQuotaResetTextConverter Instance = new();
-
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-    {
-        if (value is not DateTimeOffset resetAt)
-            return "Reset unknown";
-
-        var delta = resetAt - DateTimeOffset.UtcNow;
-        if (delta <= TimeSpan.Zero)
-            return "Resetting now";
-        if (delta.TotalDays >= 1)
-            return $"Refreshes in {(int)delta.TotalDays}d {delta.Hours}h";
-        if (delta.TotalHours >= 1)
-            return $"Refreshes in {(int)delta.TotalHours}h {delta.Minutes}m";
-        return $"Refreshes in {Math.Max(1, delta.Minutes)}m";
-    }
-
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-    {
-        throw new NotSupportedException();
-    }
-}
-
-/// <summary>
-/// Converts remaining percentage to a status color brush.
-/// </summary>
-public sealed class RemainingPercentBrushConverter : IValueConverter
-{
-    public static readonly RemainingPercentBrushConverter Instance = new();
-
-    private static readonly Brush Green = new SolidColorBrush(Color.FromRgb(74, 222, 128));
-    private static readonly Brush Yellow = new SolidColorBrush(Color.FromRgb(251, 191, 36));
-    private static readonly Brush Red = new SolidColorBrush(Color.FromRgb(248, 113, 113));
-
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-    {
-        if (value is not double remaining)
-            return Red;
-
-        return remaining switch
-        {
-            <= 10 => Red,
-            <= 30 => Yellow,
-            _ => Green,
-        };
     }
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
