@@ -21,6 +21,9 @@ public partial class UsagePopupWindow : Window
     public event EventHandler? RefreshRequested;
     public event EventHandler? SettingsRequested;
 
+    private bool _canHide = true;
+    private DateTime _lastShowTime = DateTime.MinValue;
+
     public UsagePopupWindow()
     {
         InitializeComponent();
@@ -29,9 +32,16 @@ public partial class UsagePopupWindow : Window
     /// <summary>Show popup near the system tray notification area.</summary>
     public void ShowNearTray()
     {
+        // Don't hide for at least 500ms after showing to prevent accidental closure
+        _canHide = false;
+        _lastShowTime = DateTime.Now;
+
         // Use monitor under cursor, but convert Win32 pixel coordinates to WPF DIPs.
         var cursor = WinForms.Cursor.Position;
         var screen = WinForms.Screen.FromPoint(cursor);
+        
+        // Ensure window has a handle so VisualTreeHelper works correctly for DPI
+        if (!IsLoaded) Show();
         var dpi = VisualTreeHelper.GetDpi(this);
 
         var work = ToDipRect(screen.WorkingArea, dpi);
@@ -73,12 +83,19 @@ public partial class UsagePopupWindow : Window
 
         Show();
         Activate();
+        Topmost = true; // Ensure it's on top
+        
+        // Re-enable hiding after a short delay
+        Task.Delay(500).ContinueWith(_ => _canHide = true);
     }
 
     private void Window_Deactivated(object sender, EventArgs e)
     {
-        // Auto-hide when the user clicks elsewhere
-        Hide();
+        // Auto-hide when the user clicks elsewhere, but respect the guard
+        if (_canHide || (DateTime.Now - _lastShowTime).TotalMilliseconds > 500)
+        {
+            Hide();
+        }
     }
 
     private void RefreshButton_Click(object sender, RoutedEventArgs e)
@@ -260,4 +277,84 @@ public sealed class EmptyStringToVisibilityConverter : IValueConverter
     {
         throw new NotSupportedException();
     }
+}
+
+/// <summary>
+/// Returns Visible if collection has items, Collapsed otherwise.
+/// </summary>
+public sealed class CollectionHasItemsToVisibilityConverter : IValueConverter
+{
+    public static readonly CollectionHasItemsToVisibilityConverter Instance = new();
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is System.Collections.IEnumerable enumerable)
+        {
+            var enumerator = enumerable.GetEnumerator();
+            return enumerator.MoveNext() ? Visibility.Visible : Visibility.Collapsed;
+        }
+        return Visibility.Collapsed;
+    }
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => throw new NotSupportedException();
+}
+
+/// <summary>
+/// Returns Visible if collection is empty, Collapsed otherwise.
+/// </summary>
+public sealed class CollectionEmptyToVisibilityConverter : IValueConverter
+{
+    public static readonly CollectionEmptyToVisibilityConverter Instance = new();
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is System.Collections.IEnumerable enumerable)
+        {
+            var enumerator = enumerable.GetEnumerator();
+            return enumerator.MoveNext() ? Visibility.Collapsed : Visibility.Visible;
+        }
+        return Visibility.Visible;
+    }
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => throw new NotSupportedException();
+}
+
+/// <summary>
+/// Converts a reset timestamp to a human-readable string.
+/// </summary>
+public sealed class ModelQuotaResetTextConverter : IValueConverter
+{
+    public static readonly ModelQuotaResetTextConverter Instance = new();
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is DateTimeOffset dto)
+        {
+            var diff = dto - DateTimeOffset.UtcNow;
+            if (diff.TotalSeconds <= 0) return "Resets soon";
+            if (diff.TotalHours >= 24) return $"Resets in {(int)diff.TotalDays}d";
+            if (diff.TotalHours >= 1) return $"Resets in {(int)diff.TotalHours}h";
+            return $"Resets in {(int)diff.TotalMinutes}m";
+        }
+        return "";
+    }
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => throw new NotSupportedException();
+}
+
+/// <summary>
+/// Simple color coding based on remaining percentage.
+/// </summary>
+public sealed class RemainingPercentBrushConverter : IValueConverter
+{
+    public static readonly RemainingPercentBrushConverter Instance = new();
+    private static readonly Brush Success = new SolidColorBrush(Color.FromRgb(74, 222, 128));
+    private static readonly Brush Warning = new SolidColorBrush(Color.FromRgb(251, 191, 36));
+    private static readonly Brush Danger = new SolidColorBrush(Color.FromRgb(248, 113, 113));
+
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is double pct)
+        {
+            if (pct <= 15) return Danger;
+            if (pct <= 35) return Warning;
+            return Success;
+        }
+        return Success;
+    }
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => throw new NotSupportedException();
 }

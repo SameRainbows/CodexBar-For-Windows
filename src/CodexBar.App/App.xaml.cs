@@ -304,7 +304,7 @@ public partial class App : Application
         _trayIcon?.ShowBalloonTip(title, message, BalloonIcon.Warning);
     }
 
-    private void TrayIcon_TrayLeftMouseDown(object sender, RoutedEventArgs e)
+    private void TrayIcon_TrayLeftMouseUp(object sender, RoutedEventArgs e)
     {
         TogglePopupVisibility();
     }
@@ -339,24 +339,38 @@ public partial class App : Application
             {
                 if (provider is IProviderDiagnostics diagnostics)
                 {
-                    var result = await diagnostics.DiagnoseAsync();
-                    lines.Add($"{provider.DisplayName}: {result.AuthState}");
-                    if (!string.IsNullOrWhiteSpace(result.SuggestedAction))
-                        lines.Add($"  Action: {result.SuggestedAction}");
-                    foreach (var check in result.Checks)
-                        lines.Add($"  - {check}");
+                    // Use a timeout for diagnostics
+                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                    var resultTask = diagnostics.DiagnoseAsync();
+                    if (await Task.WhenAny(resultTask, Task.Delay(5000)) == resultTask)
+                    {
+                        var result = await resultTask;
+                        lines.Add($"{provider.DisplayName}: {result.AuthState}");
+                        if (!string.IsNullOrWhiteSpace(result.SuggestedAction))
+                            lines.Add($"  Action: {result.SuggestedAction}");
+                        foreach (var check in result.Checks)
+                            lines.Add($"  - {check}");
+                    }
+                    else
+                    {
+                        lines.Add($"{provider.DisplayName}: diagnostics timed out");
+                    }
                 }
                 else
                 {
-                    var isAvailable = await provider.IsAvailableAsync();
+                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+                    var isAvailable = await provider.IsAvailableAsync(cts.Token);
                     lines.Add($"{provider.DisplayName}: {(isAvailable ? "Available" : "Unavailable")}");
                 }
             }
             catch (Exception ex)
             {
                 lines.Add($"{provider.DisplayName}: diagnostics failed ({ex.Message})");
+                Log.Warning(ex, "Diagnostics failed for {Provider}", provider.DisplayName);
             }
         }
+
+        if (lines.Count == 0) lines.Add("No providers found.");
 
         MessageBox.Show(
             string.Join(Environment.NewLine, lines),
