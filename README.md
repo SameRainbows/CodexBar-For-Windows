@@ -162,3 +162,8 @@ Logs: `%APPDATA%\CodexBar\logs\` (7-day rolling retention)
 ## License
 
 MIT
+
+
+---
+
+Windows port by [Mehmet Dedeler](https://mehmetdedeler.com).
